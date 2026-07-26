@@ -1,0 +1,16 @@
+{
+  "name": "auto-coverage",
+  "version": "0.1.0",
+  "description": "Orchestrates the equity-research, market-researcher, earnings-reviewer, and model-builder plugins end to end from a single input - a ticker, a holdings list, or a sector/theme - running each underlying skill's full task sequence without pausing for confirmation between tasks",
+  "author": {
+    "name": "jjmow",
+    "email": "jjmow.cs15@nycu.edu.tw"
+  },
+  "keywords": [
+    "equity-research",
+    "orchestration",
+    "initiating-coverage",
+    "earnings",
+    "market-research"
+  ]
+}

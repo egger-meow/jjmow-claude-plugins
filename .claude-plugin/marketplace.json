@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "jjmow-claude-plugins",
+  "description": "Personal Claude Code / Cowork plugin marketplace",
+  "owner": {
+    "name": "egger-meow",
+    "email": "jjmow.cs15@nycu.edu.tw"
+  },
+  "plugins": [
+    {
+      "name": "auto-coverage",
+      "displayName": "Auto Coverage",
+      "source": "./plugins/auto-coverage",
+      "category": "finance",
+      "description": "One-input equity research orchestrator: routes a ticker, holdings list, or theme through the equity-research, market-researcher, earnings-reviewer, and model-builder plugins end to end without pausing between tasks"
+    }
+  ]
+}
