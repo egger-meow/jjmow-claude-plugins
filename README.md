@@ -46,11 +46,50 @@ claude plugin marketplace add egger-meow/jjmow-claude-plugins
 claude plugin install auto-coverage@jjmow-claude-plugins
 ```
 
-### 3. Connect the data sources
+### 3. Data sources — nothing to set up
 
-The agent plugins read market data over MCP — `capiq`, `factset`, and `daloopa`. Connect
-whichever your firm provides before running. If a required source is missing,
-`auto-coverage` stops and says so rather than estimating or fabricating figures.
+**No paid terminal, no API key, no connector is required to start running.** Taiwan-listed
+tickers are the primary use case; US tickers are supported via SEC EDGAR.
+
+**Taiwan chain** (`.TW` / `.TWO`, or any TWSE/TPEx-listed name):
+
+| Tier | Source | Feeds |
+|------|--------|-------|
+| 0 | `twse-mcp` connector — **optional**, see below | Quotes, financials, ESG via TWSE + TPEx + TAIFEX |
+| 1 | Official keyless OpenAPI — `openapi.twse.com.tw/v1/` (上市) and the TPEx equivalents (上櫃) | Material announcements (重大訊息), monthly revenue (月營收), 5%+ shareholder filings, insider holdings |
+| 2 | MOPS direct — `mops.twse.com.tw` | Full financial statements and annual reports — the primary feed for financial modeling |
+| 3 | `mis.twse.com.tw` stock info endpoint | Current and historical prices (degrades to web search if unreachable) |
+| 4 | Company IR pages + web search | Business description, management, competitive landscape |
+
+**US chain** (non-Taiwan tickers): SEC EDGAR filings and the XBRL financial data API for
+financials, company IR pages and web search for qualitative context, public feeds for
+price history.
+
+Tier 1 is rate-capped at **3 requests per 5 seconds**, which matters most in holdings mode
+— `auto-coverage` paces its calls across the whole loop rather than per ticker.
+
+**No fabricated numbers.** If a figure can't be obtained through any tier, it is marked
+`[UNSOURCED]` inline and listed in a Data Gaps note at the end of that task's deliverable —
+never estimated, inferred from a comparable, or filled in from memory. A task halts only
+when *every* applicable tier fails to produce a required input, not merely because an
+optional connector is absent.
+
+### Optional: Taiwan market MCP connector
+
+`plugins/auto-coverage/.mcp.json` ships a config for `twse-mcp`
+([TWSEMCPServer](https://github.com/twjackysu/TWSEMCPServer)), which exposes TWSE, TPEx,
+and TAIFEX data through one interface as Tier 0.
+
+- **This is an upgrade, not a prerequisite.** Tiers 1–4 work with zero setup, and
+  `auto-coverage` drops silently to Tier 1 when the connector isn't reachable.
+- **To enable:** nothing further is needed once `.mcp.json` is present and Claude Code /
+  Cowork picks it up. Confirm with `/mcp` that `twse-mcp` shows as connected.
+- **Fair-use cap:** the public hosted endpoint is rate-limited, not unlimited. For heavy or
+  commercial use, self-host instead:
+
+```bash
+docker run -i --rm --pull=always -e MCP_STDIO=1 ghcr.io/twjackysu/twsemcpserver:latest
+```
 
 ---
 
@@ -165,6 +204,7 @@ continues.
 plugins/
   auto-coverage/
     .claude-plugin/plugin.json
+    .mcp.json                          <- optional twse-mcp connector
     skills/auto-coverage/SKILL.md      <- orchestration logic
     commands/auto-coverage.md          <- /auto-coverage
 ```

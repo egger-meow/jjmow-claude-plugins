@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "twse-mcp": {
+      "transport": "streamable_http",
+      "url": "https://TW-Stock-MCP-Server.fastmcp.app/mcp"
+    }
+  }
+}
