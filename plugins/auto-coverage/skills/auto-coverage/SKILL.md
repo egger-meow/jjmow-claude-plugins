@@ -66,19 +66,91 @@ Deliver exactly the files the underlying skills specify, at the canonical paths 
 - ❌ Portfolio-level roll-up files in holdings mode
 - ❌ "Next steps" / "completion report" documents
 - ❌ Manifests, indexes, or logs of what the orchestrator did
+- ❌ **A zip of the whole run or the whole output folder** (e.g. a `{YYYY-MM-DD}.zip`
+  sitting next to the `{YYYY-MM-DD}/` folder). The **only** zip in the entire run is Task
+  4's own charts zip, and it belongs inside `04_Charts/` alongside the unpacked PNGs —
+  nowhere else, and nothing broader gets zipped
 
 Progress and results are reported **in chat only**. If a file is not listed under
 [Output Paths](#output-paths), do not write it.
 
 ---
 
-## Step 0: Resolve the run date
+## Step 0: Resolve run-level settings
+
+Resolve these three from the raw input, once, before mode detection. All three hold for
+the entire run — never re-resolve per ticker or per task.
+
+### Run date
 
 Determine today's actual calendar date and hold it as `{YYYY-MM-DD}` for the entire run
 (e.g. `2026-07-26`). Every path in this skill uses that literal date.
 
 - ❌ Never write the placeholder `{YYYY-MM-DD}` to disk
 - ✅ One date for the whole run, even if it crosses midnight — do not re-resolve per ticker
+
+### Output language
+
+**Default: Traditional Chinese (繁體中文, zh-TW).** Every prose deliverable — company
+research narrative, valuation write-up, earnings note text, thesis check, DOCX report
+body, chart titles and axis labels where the charting step supports it — is written in
+Traditional Chinese by default.
+
+**Override**: if the input carries an explicit language directive — `lang=en`, `in
+English`, `英文`, `用英文輸出`, or any other explicit `lang=xx` — use that language for the
+whole run instead, and strip the directive from the input before mode, venue, and ticker
+parsing so it's never mistaken for a ticker or theme token.
+
+**What never gets translated, in either language setting** — these are structural
+identifiers the pipeline and the Verification Protocol match on literally; translating
+them breaks the run:
+- Canonical file and folder names (`01_Company_Research.md`, `04_Charts/`, etc. — see
+  [Output Paths](#output-paths))
+- Excel tab names (`Revenue Model`, `Income Statement`, `DCF`, etc. — exactly as each
+  underlying task's own spec names them)
+- Ticker symbols and market-convention abbreviations (`EPS`, `EBITDA`, `WACC`, `NT$`)
+
+**Every invocation of an underlying skill or agent must carry the resolved language
+explicitly** — none of the underlying skills have a language parameter of their own and
+all default to English. See [Interfaces used](#interfaces-used) for the exact template.
+
+**Font note for Traditional Chinese runs**: the underlying skills default to Times New
+Roman, which does not render CJK glyphs. When the resolved language is Traditional
+Chinese, instruct a CJK-capable font for body text instead (e.g. Microsoft JhengHei /
+微軟正黑體, or PMingLiU / 新細明體); keep Times New Roman only for any purely Latin/numeric
+fields if the underlying skill mixes fonts by field type.
+
+### Pipeline depth (how far the 5-task pipeline runs)
+
+**Default: 5 — the full pipeline, Task 1 through Task 5.** This governs every Mode 1
+execution in the run, wherever it's invoked from: a direct ticker input, a Branch B ticker
+inside Mode 2, or a candidate deep dive inside Mode 3. It does **not** apply to Branch A
+(earnings-reviewer), Branch C (thesis-tracker), or Mode 3's initial market-research sweep
+— none of those are the 5-task pipeline, so depth has nothing to act on there.
+
+**Override**: recognize an explicit depth directive — never infer one from a bare number,
+since that collides with ticker-shaped tokens. Recognized forms:
+- `depth=N` or `through=N`
+- `through Task N`, `to Task N`, `stop after Task N`
+- `到第N輪`, `到第N步`, `只跑到第N輪`, `跑到第N輪就好`
+- A target deliverable name or task label, mapped via this table:
+
+  | N | Task | Matches |
+  |---|------|---------|
+  | 1 | Company Research | `01_Company_Research`, `公司研究` |
+  | 2 | Financial Modeling | `02_Financial_Model`, `財務模型`, `財務建模` |
+  | 3 | Valuation Analysis | `03_Valuation_Analysis`, `估值`, `評價` |
+  | 4 | Chart Generation | `04_Charts`, `圖表` |
+  | 5 | Report Assembly (full pipeline) | `05_Initiation_Report`, `報告`, `full report` |
+
+If a depth directive is present but doesn't resolve to a specific N through this table,
+ask which task to stop after — do not guess.
+
+**This is a user-authorized stop point, not a shortcut.** Every task through N still runs
+to its full spec — no shrinking Task 1's word count, no thinning Task 2's tabs. Only tasks
+*after* N are skipped entirely. See
+[Stopping at the resolved depth](#stopping-at-the-resolved-depth) in Mode 1 for how the run
+reports a partial completion.
 
 ---
 
@@ -177,18 +249,25 @@ plugin (`earnings-analysis`, `comps-analysis`, `idea-generation`), so **always q
 
 `equity-research:initiating-coverage` executes immediately when a **specific task** is
 named, and only asks which task to run when handed a whole-pipeline request. So never ask
-it for the pipeline. Issue five separate single-task invocations in order:
+it for the pipeline. Issue single-task invocations in order, one per task from 1 up to the
+resolved [pipeline depth](#pipeline-depth-how-far-the-5-task-pipeline-runs) (default 5),
+each following this template:
 
 ```
-"Use initiating-coverage, Task 1 for {TICKER}"
-"Use initiating-coverage, Task 2 for {TICKER}"
-"Use initiating-coverage, Task 3 for {TICKER}"
-"Use initiating-coverage, Task 4 for {TICKER}"
-"Use initiating-coverage, Task 5 for {TICKER}"
+"Use initiating-coverage, Task {N} for {TICKER}. Write all prose in {OUTPUT_LANGUAGE};
+keep file names, Excel tab names, and standard financial abbreviations in English exactly
+as this skill's own spec names them."
 ```
 
-Each is a valid single-task request the skill runs on sight. The orchestrator supplies the
-sequencing and the prerequisite verification that the user would otherwise supply by hand.
+Stop after Task {DEPTH} completes — do not invoke tasks past the resolved depth. Each
+invocation is a valid single-task request the skill runs on sight. The orchestrator
+supplies the sequencing, the language directive, the depth gate, and the prerequisite
+verification that the user would otherwise supply by hand.
+
+This same template — append the resolved `{OUTPUT_LANGUAGE}` instruction, phrased for
+that skill's own deliverables — applies to every other invocation in this skill:
+`thesis-tracker`, `catalyst-calendar`, and the `market-researcher`, `earnings-reviewer`,
+and `model-builder` agents. None of them default to Traditional Chinese on their own.
 
 ---
 
@@ -332,7 +411,10 @@ Modes 1 and 3, a halt ends the run for that candidate.
 
 ## Mode 1 — Ticker (single-stock deep dive)
 
-Run all five tasks of `equity-research:initiating-coverage` back to back. No pauses.
+Run Task 1 through the resolved [pipeline depth](#pipeline-depth-how-far-the-5-task-pipeline-runs)
+(default: all five tasks) of `equity-research:initiating-coverage` back to back. No
+pauses. Every invocation follows the [template in Interfaces used](#interfaces-used) and
+carries the resolved [output language](#output-language).
 
 Resolve the listing venue ([Step 2](#step-2-resolve-the-listing-venue)) before Task 1, and
 source every task through that venue's [Data Sources](#data-sources) chain.
@@ -341,44 +423,64 @@ source every task through that venue's [Data Sources](#data-sources) chain.
 
 1. **Task 1 — Company Research**
    - Prerequisite check: venue resolved (Taiwan or US chain selected)
-   - Invoke: `"Use initiating-coverage, Task 1 for {TICKER}"`
+   - Invoke the Task 1 template
    - Write output to `01_Company_Research.md`
    - Verify: file exists, non-empty, contains the full 6,000–8,000 word research document
      with management bios, competitive analysis, TAM, and risk assessment
 
-2. **Task 2 — Financial Modeling** (or delegate — see [Model routing](#model-routing))
+2. **Task 2 — Financial Modeling** — runs if depth ≥ 2 (or delegate — see
+   [Model routing](#model-routing))
    - Prerequisite check: `01_Company_Research.md` exists, non-empty, well-formed
-   - Invoke: `"Use initiating-coverage, Task 2 for {TICKER}"`
+   - Invoke the Task 2 template
    - Write output to `02_Financial_Model.xlsx`
    - Verify: workbook opens and has all 6 tabs — Revenue Model, Income Statement, Cash
      Flow Statement, Balance Sheet, Scenarios, DCF Inputs — with 3–5 years historical and
      5 years projected, and Bull/Base/Bear scenarios populated
 
-3. **Task 3 — Valuation Analysis**
+3. **Task 3 — Valuation Analysis** — runs if depth ≥ 3
    - Prerequisite check: `02_Financial_Model.xlsx` exists, opens, has all 6 tabs
-   - Invoke: `"Use initiating-coverage, Task 3 for {TICKER}"`
+   - Invoke the Task 3 template
    - Write the analysis to `03_Valuation_Analysis.md`; the task's Excel tabs (DCF,
      Sensitivity, Comparable Companies, Valuation Summary) are added **to the existing
      `02_Financial_Model.xlsx`** — do not create a second workbook
    - Verify: markdown exists and is non-empty with a stated price target and BUY/HOLD/SELL
      recommendation; the four new tabs are present in the workbook
 
-4. **Task 4 — Chart Generation**
+4. **Task 4 — Chart Generation** — runs if depth ≥ 4
    - Prerequisite check: `01_Company_Research.md`, `02_Financial_Model.xlsx` (with Task 3
      tabs), and `03_Valuation_Analysis.md` all pass
-   - Invoke: `"Use initiating-coverage, Task 4 for {TICKER}"`
+   - Invoke the Task 4 template
    - The skill's deliverable is a charts zip. Unpack it into `04_Charts/` so the PNGs sit
      at `04_Charts/chart_01_*.png … chart_NN_*.png`, and leave the zip and its
-     `chart_index.txt` in `04_Charts/` alongside them
+     `chart_index.txt` in `04_Charts/` alongside them — nowhere else
    - Verify: at least 25 charts present at 300 DPI, and all four mandatory charts exist —
      `chart_03` (revenue by product), `chart_04` (revenue by geography), `chart_28` (DCF
      sensitivity heatmap), `chart_32` (valuation football field)
 
-5. **Task 5 — Report Assembly**
+5. **Task 5 — Report Assembly** — runs if depth = 5
    - Prerequisite check: all of Tasks 1–4 pass
-   - Invoke: `"Use initiating-coverage, Task 5 for {TICKER}"`
+   - Invoke the Task 5 template
    - Write output to `05_Initiation_Report.docx`
    - Verify: 30+ pages, 10,000+ words, 25+ embedded charts, 12+ tables
+
+### Stopping at the resolved depth
+
+When depth < 5, this is a planned stop, not a failure — report it with a success-style
+message, never the ❌ HALTED format:
+
+```
+✅ Auto-coverage stopped after Task 3 (Valuation Analysis) by request.
+
+Ticker:   2408.TW
+Produced: 01_Company_Research.md, 02_Financial_Model.xlsx, 03_Valuation_Analysis.md
+Skipped:  Task 4 (Chart Generation), Task 5 (Report Assembly) — not requested
+
+Re-run without a depth limit, or with depth=5, to continue through the full report.
+```
+
+- ❌ Never invoke a task beyond the resolved depth "just to be safe" or "since it's close"
+- ❌ Never write partial or placeholder content for a task beyond the resolved depth
+- ✅ Stop cleanly the moment Task {DEPTH} passes its own verification
 
 ### Model routing
 
@@ -460,7 +562,9 @@ initiation.
 
 ### Branch B — no near-term earnings, no prior report → full Mode 1
 
-Run the complete Mode 1 protocol for this ticker, including every prerequisite check.
+Run the complete Mode 1 protocol for this ticker, including every prerequisite check, and
+honoring the run's resolved [pipeline depth](#pipeline-depth-how-far-the-5-task-pipeline-runs)
+and [output language](#output-language) — the same as any Mode 1 invocation.
 
 ### Branch C — no near-term earnings, prior report exists → thesis-tracker
 
@@ -517,9 +621,10 @@ AMD      Branch B  ❌ HALTED at Task 3 — 02_Financial_Model.xlsx missing DCF 
 
 3. **Deep dive each candidate**
    - For each of the N candidates, **sequentially**, resolve its listing venue
-     ([Step 2](#step-2-resolve-the-listing-venue)) and then run the full Mode 1 protocol.
-     A Taiwan-scoped theme can still surface a US-listed candidate — route each candidate
-     on its own venue, not on the theme's
+     ([Step 2](#step-2-resolve-the-listing-venue)) and then run the full Mode 1 protocol,
+     honoring the run's resolved [pipeline depth](#pipeline-depth-how-far-the-5-task-pipeline-runs)
+     and [output language](#output-language). A Taiwan-scoped theme can still surface a
+     US-listed candidate — route each candidate on its own venue, not on the theme's
    - Candidate output goes in a per-candidate subfolder beneath the exploration folder,
      using the exact Mode 1 file layout
    - A halt on one candidate ends that candidate only; continue to the next and report the
@@ -538,6 +643,11 @@ spaces and `/` → `-`, other punctuation dropped (`"AI power infrastructure"` �
 
 Create parent directories as needed. If a target file already exists for today's date,
 overwrite it — a re-run of the same day supersedes.
+
+If the run's [pipeline depth](#pipeline-depth-how-far-the-5-task-pipeline-runs) is less
+than 5, only the files through the reached task exist — see
+[Stopping at the resolved depth](#stopping-at-the-resolved-depth). The layouts below assume
+the default full depth.
 
 ### Modes 1 and 2 — full initiation pipeline
 
@@ -599,13 +709,18 @@ skill's default name.
 A successful auto-coverage run:
 
 1. Detected the mode from the input shape without asking
-2. Resolved each ticker's listing venue and sourced it through the matching chain
-3. Ran every task in the mode's sequence without pausing for confirmation
-4. Passed a prerequisite verification before each task
-5. Halted loudly and precisely on the first failed verification, naming the task and file
-6. Respected the Tier 1 rate cap, especially across a holdings loop
-7. Marked every unobtainable figure `[UNSOURCED]` with a Data Gaps note, rather than
+2. Resolved the run's output language and pipeline depth, defaulting to Traditional
+   Chinese and the full 5-task pipeline when no override was given
+3. Resolved each ticker's listing venue and sourced it through the matching chain
+4. Ran every task in the mode's sequence without pausing for confirmation, up to the
+   resolved depth, and stopped cleanly — not silently, not by halting — once it was reached
+5. Passed a prerequisite verification before each task
+6. Halted loudly and precisely on the first failed verification, naming the task and file
+7. Respected the Tier 1 rate cap, especially across a holdings loop
+8. Marked every unobtainable figure `[UNSOURCED]` with a Data Gaps note, rather than
    estimating it or halting the whole task over it
-8. Wrote every deliverable to its canonical date-stamped path
-9. Created no files beyond those in [Output Paths](#output-paths)
-10. Met every underlying skill's quality minimums unchanged
+9. Wrote every deliverable to its canonical date-stamped path, in the resolved language,
+   with file names, tab names, and abbreviations left untranslated
+10. Created no files beyond those in [Output Paths](#output-paths) — including no
+    whole-folder zip
+11. Met every underlying skill's quality minimums unchanged
