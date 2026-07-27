@@ -219,6 +219,17 @@ removing prompts, not from producing less. The deliverables list is also fixed �
 summary, roll-up, or completion documents, and no zip of the whole output folder (only
 Task 4's own charts zip, staying inside `04_Charts/`).
 
+**Rigor directives on the valuation.** The Task 3 and Task 5 invocations carry a fixed
+set of general disclosure requirements: one dated current price used in every
+calculation, a statement of how sensitive the rating is to the valuation-method weights
+(and whether a plausible re-weighting flips it), explicit flagging of load-bearing
+assumptions with their source quality (company-confirmed vs press-reported vs estimate),
+an argued variant view wherever the model diverges materially from consensus, and a
+closing list of observable signposts that would confirm or break the thesis. After
+Task 3, shared figures (price, share count, market cap) are checked for consistency
+across deliverables. These are disclosure requirements passed to the underlying skills —
+`auto-coverage` still computes nothing itself.
+
 **Verification instead of confirmation.** Before each task, `auto-coverage` checks that the
 previous task's output exists, is non-empty, and is well-formed — the right tabs in the
 workbook, the mandatory charts present, a price target in the valuation. If a check fails

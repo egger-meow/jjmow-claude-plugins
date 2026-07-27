@@ -269,6 +269,37 @@ that skill's own deliverables — applies to every other invocation in this skil
 `thesis-tracker`, `catalyst-calendar`, and the `market-researcher`, `earnings-reviewer`,
 and `model-builder` agents. None of them default to Traditional Chinese on their own.
 
+### Analytical-rigor directives (appended to Tasks 3 and 5)
+
+These are **pass-through disclosure requirements, not research logic** — the orchestrator
+computes nothing; it requires the producing task to show its own reasoning honestly.
+Append them to the Task 3 invocation, and again to the Task 5 invocation so the report
+carries them forward. They are general and apply to any name in any market:
+
+- **One current price.** Resolve a single current share price with an explicit as-of date
+  before Task 3 starts, and use that one figure in every calculation that references the
+  current price — target-price math, equity market cap inside the WACC, upside/downside.
+  If any input legitimately needs a different date's price, state both prices and both
+  dates side by side. Never describe two different prices as "used consistently".
+- **Rating robustness, not just a point estimate.** When the valuation methods disagree
+  widely, the blend weights are a judgment call — say so plainly. State whether the
+  recommendation survives reasonable alternative weightings; if a plausible re-weighting
+  flips the rating, that fact belongs in the summary, not absorbed silently into one
+  weighted number presented as derived truth.
+- **Name the load-bearing assumptions.** Identify the small set of inputs that, moved
+  within their plausible range, would change the recommendation. For each, state its
+  source quality — company-confirmed / press-reported / model estimate — and show the
+  sensitivity. A recommendation must never rest silently on an unconfirmed figure; if it
+  does rest on one, the summary must say so in as many words.
+- **Defend the variant view.** When the model's estimates diverge materially from
+  published consensus, do not merely note the gap — state specifically what the market
+  is missing or weighing wrongly and why this model's number is more credible. A large
+  divergence with no argument attached is a red flag, not a differentiator.
+- **End with signposts.** Close the valuation (and the final report) with a short list of
+  observable future events — guidance releases, contract settlements, competitor
+  actions, regulatory or reporting dates — that would confirm or break the thesis, so
+  the reader can track the call over time rather than take the target price on faith.
+
 ---
 
 ## Data Sources
@@ -382,6 +413,21 @@ Each task in every mode declares its prerequisite files. Before starting task *N
 4. If every check passes → start task *N* immediately, no announcement question.
 5. If any check fails → **STOP THE RUN.**
 
+### Cross-deliverable consistency — checked when Task 3 completes
+
+Shared figures — the current share price, shares outstanding, market cap, and any
+headline figure that appears in more than one deliverable — must take a **single value
+everywhere** across the outputs produced so far, or carry explicit as-of dates in both
+places where a difference is legitimate. On a conflict:
+
+1. Re-invoke the producing task **once**, naming each conflicting figure and where each
+   value appears, and require it to reconcile them.
+2. If the conflict survives that one fix pass → treat it as a failed verification and
+   halt with the standard report below.
+
+Never paper over a mismatch with a claim of consistency — two different numbers for the
+same quantity is a defect, not a footnote.
+
 ### On failure
 
 ```
@@ -439,12 +485,17 @@ source every task through that venue's [Data Sources](#data-sources) chain.
 
 3. **Task 3 — Valuation Analysis** — runs if depth ≥ 3
    - Prerequisite check: `02_Financial_Model.xlsx` exists, opens, has all 6 tabs
-   - Invoke the Task 3 template
+   - Invoke the Task 3 template, carrying the
+     [analytical-rigor directives](#analytical-rigor-directives-appended-to-tasks-3-and-5)
    - Write the analysis to `03_Valuation_Analysis.md`; the task's Excel tabs (DCF,
      Sensitivity, Comparable Companies, Valuation Summary) are added **to the existing
      `02_Financial_Model.xlsx`** — do not create a second workbook
    - Verify: markdown exists and is non-empty with a stated price target and BUY/HOLD/SELL
-     recommendation; the four new tabs are present in the workbook
+     recommendation; the four new tabs are present in the workbook; the analysis carries
+     the rigor disclosures (single dated price, weight-robustness statement, load-bearing
+     assumptions with source quality, variant-view argument where estimates diverge from
+     consensus, closing signposts); then run the
+     [cross-deliverable consistency check](#cross-deliverable-consistency--checked-when-task-3-completes)
 
 4. **Task 4 — Chart Generation** — runs if depth ≥ 4
    - Prerequisite check: `01_Company_Research.md`, `02_Financial_Model.xlsx` (with Task 3
@@ -459,7 +510,9 @@ source every task through that venue's [Data Sources](#data-sources) chain.
 
 5. **Task 5 — Report Assembly** — runs if depth = 5
    - Prerequisite check: all of Tasks 1–4 pass
-   - Invoke the Task 5 template
+   - Invoke the Task 5 template, carrying the
+     [analytical-rigor directives](#analytical-rigor-directives-appended-to-tasks-3-and-5)
+     so the report preserves the rigor disclosures from Task 3
    - Write output to `05_Initiation_Report.docx`
    - Verify: 30+ pages, 10,000+ words, 25+ embedded charts, 12+ tables
 
@@ -724,3 +777,7 @@ A successful auto-coverage run:
 10. Created no files beyond those in [Output Paths](#output-paths) — including no
     whole-folder zip
 11. Met every underlying skill's quality minimums unchanged
+12. Carried the analytical-rigor directives on the Task 3 and Task 5 invocations, and
+    passed the cross-deliverable consistency check — one dated current price everywhere,
+    no silently load-bearing unconfirmed figures, and a rating whose sensitivity to the
+    method weights is disclosed rather than hidden
