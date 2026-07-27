@@ -580,9 +580,13 @@ For each ticker, in list order:
    each is routed to its own chain.
 
 1. **Earnings-window check.** Use `equity-research:catalyst-calendar` to find the next and
-   most recent earnings dates for the ticker, sourced through that ticker's chain — for
-   Taiwan names, the Tier 1 OpenAPI material-announcements feed carries scheduled
-   reporting dates. Classify:
+   most recent earnings dates for the ticker, sourced through that ticker's chain:
+   - **Taiwan chain** — the Tier 1 OpenAPI material-announcements feed (重大訊息) carries
+     scheduled reporting dates; fall to Tier 4 (IR page + `web_search`) if it doesn't
+   - **US chain** — SEC EDGAR's filing history (8-K items announcing results, and the
+     10-Q/10-K cadence) plus the company's IR "events/earnings" page; fall to `web_search`
+     for the next scheduled date if neither carries it yet
+   Classify:
    - **Near-term earnings** — reports within the next 30 days, **or** reported within the
      last 30 days → **Branch A**
    - Otherwise → check for prior coverage
